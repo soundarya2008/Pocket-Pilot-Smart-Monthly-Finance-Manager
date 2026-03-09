@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PocketPilot</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
+}
+
+body{
+background:
+linear-gradient(rgba(15,15,24,0.85),rgba(15,15,24,0.95)),
+url("https://images.unsplash.com/photo-1551288049-bebda4e38f71");
+background-size:cover;
+background-position:center;
+min-height:100vh;
+color:white;
+}
+
+/* NAVBAR */
+
+.navbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:20px 50px;
+background:rgba(0,0,0,0.4);
+backdrop-filter:blur(10px);
+position:sticky;
+top:0;
+}
+
+.logo{
+font-size:26px;
+font-weight:700;
+}
+
+/* PAGE */
+
+.page{
+display:none;
+justify-content:center;
+padding:40px;
+}
+
+.active{
+display:flex;
+}
+
+/* CARD */
+
+.card{
+background:rgba(255,255,255,0.05);
+padding:35px;
+border-radius:20px;
+width:450px;
+backdrop-filter:blur(12px);
+}
+
+/* INPUT */
+
+input{
+width:100%;
+padding:12px;
+margin:8px 0;
+border:none;
+border-radius:8px;
+}
+
+/* BUTTON */
+
+button{
+padding:12px 25px;
+border:none;
+border-radius:25px;
+background:linear-gradient(135deg,#ff4e50,#580c1a);
+color:white;
+cursor:pointer;
+margin-top:10px;
+}
+
+/* RESULT */
+
+.result{
+margin-top:15px;
+line-height:1.6;
+}
+
+/* PROGRESS BAR */
+
+.bar{
+height:10px;
+background:#444;
+border-radius:10px;
+margin-top:10px;
+overflow:hidden;
+}
+
+.barFill{
+height:100%;
+width:0%;
+background:#00ffcc;
+transition:0.6s;
+}
+
+/* SUMMARY */
+
+.summary{
+margin-top:15px;
+background:rgba(255,255,255,0.08);
+padding:10px;
+border-radius:10px;
+}
+
+/* WARNINGS */
+
+.warning{
+margin-top:10px;
+font-weight:600;
+}
+
+.safe{color:#00ffcc;}
+.near{color:#ffc107;}
+.danger{color:#ff4e50;}
+
+/* HISTORY */
+
+.history{
+margin-top:15px;
+background:rgba(255,255,255,0.05);
+padding:10px;
+border-radius:10px;
+max-height:120px;
+overflow-y:auto;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="navbar">
+<div class="logo">PocketPilot</div>
+<button onclick="logout()" id="logoutBtn" style="display:none;">Logout</button>
+</div>
+
+<!-- LOGIN -->
+
+<div class="page active" id="loginPage">
+
+<div class="card">
+
+<h2>Login</h2>
+
+<input id="email" placeholder="Enter Gmail">
+
+<input type="password" id="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<p id="error" style="color:#ff4e50;"></p>
+
+</div>
+
+</div>
+
+<!-- DASHBOARD -->
+
+<div class="page" id="plannerPage">
+
+<div class="card">
+
+<h2>Smart Salary Planner</h2>
+
+<input type="date" id="date" onchange="loadData()">
+
+<input type="number" id="salary" placeholder="Monthly Salary">
+<input type="number" id="fixed" placeholder="Fixed Expenses">
+<input type="number" id="savePercent" placeholder="Savings %">
+
+<button onclick="generatePlan()">Generate Plan</button>
+
+<div class="result" id="result"></div>
+
+<div class="bar">
+<div class="barFill" id="budgetBar"></div>
+</div>
+
+<div class="warning" id="limitWarning"></div>
+
+<div class="summary" id="todaySummary">
+Today's Spent: ₹0
+</div>
+
+<div class="summary" id="dailyAdvice"></div>
+
+<h3 style="margin-top:20px;">Track Daily Spending</h3>
+
+<input type="number" id="dailyExpense" placeholder="Enter Expense">
+
+<button onclick="addExpense()">Add Expense</button>
+
+<div class="history">
+
+<b>Today's Expenses</b>
+
+<ul id="expenseList"></ul>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let currentEmail=""
+
+/* LOGIN SYSTEM */
+
+function login(){
+
+let email=document.getElementById("email").value
+let password=document.getElementById("password").value
+
+let gmailPattern=/^[a-zA-Z0-9._%+-]+@gmail\.com$/
+
+if(!gmailPattern.test(email)){
+document.getElementById("error").innerText="Enter valid Gmail"
+return
+}
+
+if(password.length<4){
+document.getElementById("error").innerText="Password must be at least 4 characters"
+return
+}
+
+let savedPassword=localStorage.getItem("pass_"+email)
+
+/* FIRST TIME USER */
+
+if(!savedPassword){
+
+localStorage.setItem("pass_"+email,password)
+localStorage.setItem("currentUser",email)
+
+currentEmail=email
+
+showPlanner()
+
+}
+
+/* EXISTING USER */
+
+else{
+
+if(password===savedPassword){
+
+localStorage.setItem("currentUser",email)
+
+currentEmail=email
+
+showPlanner()
+
+}
+
+else{
+
+document.getElementById("error").innerText="Incorrect Password"
+
+}
+
+}
+
+}
+
+function showPlanner(){
+
+document.getElementById("loginPage").classList.remove("active")
+document.getElementById("plannerPage").classList.add("active")
+document.getElementById("logoutBtn").style.display="block"
+
+}
+
+/* AUTO LOGIN */
+
+window.onload=function(){
+
+let saved=localStorage.getItem("currentUser")
+
+if(saved){
+currentEmail=saved
+showPlanner()
+}
+
+}
+
+/* LOGOUT */
+
+function logout(){
+
+localStorage.removeItem("currentUser")
+location.reload()
+
+}
+
+/* GENERATE PLAN */
+
+function generatePlan(){
+
+let salary=parseFloat(document.getElementById("salary").value)
+let fixed=parseFloat(document.getElementById("fixed").value)
+let percent=parseFloat(document.getElementById("savePercent").value)
+let date=document.getElementById("date").value
+
+if(date==""){
+alert("Select date")
+return
+}
+
+let savings=salary*percent/100
+let spendable=salary-fixed-savings
+
+let key=currentEmail+"_"+date
+
+let plan={
+salary:salary,
+fixed:fixed,
+savings:savings,
+spendable:spendable,
+spent:0,
+expenses:[]
+}
+
+localStorage.setItem(key,JSON.stringify(plan))
+
+updateUI(plan)
+renderExpenses(plan)
+
+}
+
+/* ADD EXPENSE */
+
+function addExpense(){
+
+let date=document.getElementById("date").value
+let expense=parseFloat(document.getElementById("dailyExpense").value)
+
+let key=currentEmail+"_"+date
+let data=JSON.parse(localStorage.getItem(key))
+
+if(!data){
+alert("Generate plan first")
+return
+}
+
+data.spent+=expense
+data.spendable-=expense
+data.expenses.push(expense)
+
+localStorage.setItem(key,JSON.stringify(data))
+
+updateUI(data)
+renderExpenses(data)
+
+}
+
+/* LOAD DATE DATA */
+
+function loadData(){
+
+let date=document.getElementById("date").value
+let key=currentEmail+"_"+date
+
+let data=JSON.parse(localStorage.getItem(key))
+
+if(data){
+updateUI(data)
+renderExpenses(data)
+return
+}
+
+/* GET YESTERDAY DATA */
+
+let y=new Date(date)
+y.setDate(y.getDate()-1)
+
+let yDate=y.toISOString().split("T")[0]
+let yKey=currentEmail+"_"+yDate
+
+let yData=JSON.parse(localStorage.getItem(yKey))
+
+if(yData){
+
+let newPlan={
+salary:yData.salary,
+fixed:yData.fixed,
+savings:yData.savings,
+spendable:yData.spendable,
+spent:0,
+expenses:[]
+}
+
+localStorage.setItem(key,JSON.stringify(newPlan))
+
+updateUI(newPlan)
+renderExpenses(newPlan)
+
+}
+
+}
+
+/* SHOW EXPENSE LIST */
+
+function renderExpenses(data){
+
+let list=document.getElementById("expenseList")
+list.innerHTML=""
+
+data.expenses.forEach(e=>{
+let li=document.createElement("li")
+li.innerText="₹"+e
+list.appendChild(li)
+})
+
+}
+
+/* UPDATE UI */
+
+function updateUI(data){
+
+document.getElementById("result").innerHTML=
+
+"💸 Fixed Expenses: ₹"+data.fixed+"<br>"+
+"💰 Savings: ₹"+data.savings+"<br>"+
+"🛍 Remaining Budget: ₹"+data.spendable
+
+document.getElementById("todaySummary").innerHTML=
+"💸 Spent Today: ₹"+data.spent
+
+let total=data.spent+data.spendable
+let percent=(data.spent/total)*100
+
+let bar=document.getElementById("budgetBar")
+bar.style.width=percent+"%"
+
+let warning=document.getElementById("limitWarning")
+
+if(percent>=100){
+
+warning.innerHTML="🚨 Overspending! Stop spending today."
+warning.className="warning danger"
+bar.style.background="#ff4e50"
+
+}
+else if(percent>=80){
+
+warning.innerHTML="⚠️ Careful! You are near your budget limit."
+warning.className="warning near"
+bar.style.background="#ffc107"
+
+}
+else{
+
+warning.innerHTML="✅ Good job! Your spending is under control."
+warning.className="warning safe"
+bar.style.background="#00ffcc"
+
+}
+
+/* DAILY ADVICE */
+
+let today=new Date(document.getElementById("date").value)
+let end=new Date(today.getFullYear(),today.getMonth()+1,0)
+
+let remaining=end.getDate()-today.getDate()+1
+
+let advice=data.spendable/remaining
+
+document.getElementById("dailyAdvice").innerHTML=
+"💡 Suggested daily spending: ₹"+Math.max(0,advice.toFixed(0))
+
+}
+
+</script>
+
+</body>
+</html>
